@@ -1,0 +1,14 @@
+{
+    "Id": 1234,
+    "Topology_name": "ddos_dns",
+    "Action_type": "rate-limit",
+    "Element": "SERVICE",
+    "type": "dns",
+    "Source": "172.22.1.8",
+    "Destination": "8.8.8.8",
+    "metric": {
+        "Type": "throughput",
+        "Node": "XX",
+        "Unit": "pkts_sec"
+    }
+}

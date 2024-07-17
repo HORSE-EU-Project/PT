@@ -51,7 +51,7 @@ def index():
     app.logger.info('Policy Translator is running')
     return 'Policy Translator is running', 200
 
-@app.route('/api', methods=['POST'])
+@app.route('/generate/xml', methods=['POST'])
 def api():
     json_data = request.get_json()
     if not json_data:
@@ -63,17 +63,11 @@ def api():
         return jsonify({"error": f"Missing key: {str(e)}"}), 400
 
     try: 
-        tree = ET.fromstring(xml_data)
+        ET.fromstring(xml_data)  # Validar XML
     except Exception as e:
         return jsonify({"error": f"Validating MSPL translation: {str(e)}"}), 400
-
-    # URL from orchestrator service
-    response = requests.post('http://orchestrator:8002/meservice', data=xml_data, headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
-
-    if response.status_code == 200:
-        return jsonify({"message": "Success"}), 200
-    else:
-        return jsonify({"error": "Failed to send XML to orchestrator"}), 500
+    
+    return Response(xml_data, mimetype='application/xml')
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5005)

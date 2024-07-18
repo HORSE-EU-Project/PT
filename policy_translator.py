@@ -34,7 +34,9 @@ def json_to_xml(json_data):
     ET.SubElement(dns_rate_parameters, "operation").text = "RATE"
     ET.SubElement(dns_rate_parameters, "ip").text = json_data["Source"]
     
-    ET.SubElement(dns_rate_parameters, "rate").text = "1"
+    # Verificar si el campo 'rate' está presente en el JSON, si no, establecer un valor predeterminado de 1
+    rate_value = json_data.get("rate", "1")
+    ET.SubElement(dns_rate_parameters, "rate").text = str(rate_value)
     
     external_data = ET.SubElement(configuration_rule, "externalData", {"xsi:type": "Priority"})
     

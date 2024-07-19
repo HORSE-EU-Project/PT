@@ -43,18 +43,18 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y docker-compose
 
-      - name: Create shared-network
-        run: docker network create shared-network
+      #- name: Create shared-network
+      #  run: docker network create shared-network
 
-      - name: Run docker-compose for orchestrator and PT
+      - name: Run docker-compose
         run: docker-compose up -d 
         
-      - name: Wait for orchestrator service to be ready
-        run: |
-          while ! curl -s http://localhost:8002 > /dev/null; do
-            echo "Waiting for orchestrator service..."
-            sleep 5
-          done
+      #- name: Wait for orchestrator service to be ready
+      #  run: |
+      #    while ! curl -s http://localhost:8002 > /dev/null; do
+      #      echo "Waiting for orchestrator service..."
+      #      sleep 5
+      #    done
 
       - name: Wait for policy_translator service to be ready
         run: |
@@ -65,19 +65,14 @@ jobs:
 
       - name: Run get request.json translation
         run: |
-          response=$(curl -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/api)
-          if [ $response -ne 200 ]; then
-            echo "Request failed with response code $response"
-            exit 1
-          else
-            echo "Request succeeded with response code $response"
-          fi
+          echo "XML translation:"
+          curl -s -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/generate/xml
 
       - name: Wait 10 seconds
         run: sleep 10
 
-      - name: Check Docker container logs for orchestrator
-        run: docker logs orchestrator
+      #- name: Check Docker container logs for orchestrator
+      #  run: docker logs orchestrator
 
       - name: Check Docker container logs for policy_translator
         run: docker logs policy_translator

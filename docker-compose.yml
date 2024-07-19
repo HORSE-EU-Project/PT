@@ -1,23 +1,23 @@
 version: '3.8'
 
 services:
-  orchestrator:
-    image: ghcr.io/horse-eu-project/orchs:latest
-    container_name: orchestrator
-    ports:
-      - "8002:8002"
-    networks:
-      - shared-network
+  #orchestrator:
+  #  image: ghcr.io/horse-eu-project/orchs:latest
+  #  container_name: orchestrator
+  #  ports:
+  #    - "8002:8002"
+  #  networks:
+  #    - shared-network
 
   policy_translator:
     image: ghcr.io/horse-eu-project/pt:latest
     container_name: policy_translator
     ports:
       - "5005:5005"
-    depends_on:
-      - orchestrator
-    networks:
-      - shared-network
+    #depends_on:
+    #  - orchestrator
+    #networks:
+    #  - shared-network
   
-networks:
-  shared-network:
+#networks:
+#  shared-network:

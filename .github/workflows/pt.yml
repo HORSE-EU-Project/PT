@@ -66,7 +66,8 @@ jobs:
       - name: Run get request.json translation
         run: |
           echo "XML translation:"
-          curl -s -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/generate/xml
+          curl -s -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/generate/xml -o response.xml
+          cat response.xml
 
       - name: Wait 10 seconds
         run: sleep 10

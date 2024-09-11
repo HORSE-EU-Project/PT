@@ -63,7 +63,7 @@ jobs:
             sleep 5
           done
 
-      - name: Run get request.json translation
+      - name: Test /api endpoint
         run: |
           echo "XML translation:"
           curl -s -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/api -o response.xml

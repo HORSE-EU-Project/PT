@@ -66,8 +66,14 @@ jobs:
       - name: Run get request.json translation
         run: |
           echo "XML translation:"
-          curl -s -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/generate/xml -o response.xml
+          curl -s -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/api -o response.xml
           cat response.xml
+
+      - name: Test /send_policy endpoint
+        run: |
+          echo "JSON translation"
+          curl -s -X POST -H "Cache-Control: no-cache" -H "Content-Type: application/json" -d @request.json http://localhost:5005/send_policy -o response.json
+          cat response.json
 
       - name: Wait 10 seconds
         run: sleep 10

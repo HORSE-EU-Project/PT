@@ -76,7 +76,7 @@ def create_output_template(input_value, interface_value):
         "what": {
             "KPIs": {
                 "element": {
-                    "node": "dns-c",
+                    "node": "dns-s",
                     "interface": interface_value
                 },
                 "metric": "avg-time-requests",

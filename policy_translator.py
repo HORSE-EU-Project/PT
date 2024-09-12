@@ -91,6 +91,11 @@ def create_output_template(input_value, interface_value):
     }
     return output_template
 
+@app.route('/')
+def index():
+    app.logger.info('Policy Translator is running')
+    return 'Policy Translator is running', 200
+
 @app.route('/api', methods=['POST'])
 def api():
     json_data = request.get_json()

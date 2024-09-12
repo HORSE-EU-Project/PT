@@ -1,28 +1,28 @@
 {
-    "id": "1235",
-    "topology_name": "horse_ddos",
-    "attack": "DDoS",
-    "what": {
-        "KPIs": {
-            "element": {
-                "node": "dns-c",
-                "interface": "eth1"
-            },
-            "metric": "packets-per-second"
-        }
-    },
-    "if": {
-        "action": {
-            "type": "RATE LIMIT",
-            "value": "20",
-            "unit": "responses-per-second",
-            "duration": "3600"
-        },
-        "element": {
-            "node": "dns-s",
-            "interface": "*",
-            "network": "*",
-            "ref": "dns-s_eth1"
-        }
+  "id": "1235",
+  "topology_name": "horse_ddos",
+  "attack": "DDoS",
+  "what": {
+    "KPIs": {
+      "element": {
+        "node": "dns-c",
+        "interface": "eth1"
+      },
+      "metric": "avg-time-requests"
     }
+  },
+  "if": {
+    "action": {
+      "type": "RATE LIMIT",
+      "value": "20",
+      "unit": "responses-per-second",
+      "duration": "3600"
+    },
+    "element": {
+      "node": "dns-s",
+      "interface": "*",
+      "network": "*",
+      "ref": "dns-s_eth1"
+    }
+  }
 }

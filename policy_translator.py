@@ -79,10 +79,12 @@ def create_output_template(input_value, interface_value):
                     "node": "dns-c",
                     "interface": interface_value
                 },
-                "metric": "packets-per-second",
+                "metric": "avg-time-requests",
                 "result": {
-                    "value": input_value,
-                    "unit": "packets-per-second"
+                    # "value": input_value,
+                    "initial-value": "0.532",
+                    "current-value": "0.022",
+                    "unit": "seconds"
                 }
             }
         }

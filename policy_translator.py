@@ -136,7 +136,8 @@ def send_policy():
                 output_json = create_output_template(input_value, interface_value)
                 # return Response(response=json.dumps(output_json), status=200, mimetype='application/json')
                 time.sleep(10)
-                return Response(response=jsonify(json_data).get_data(), status=200, mimetype='application/json')
+                json_received = json.dumps(json_data, indent=2, sort_keys=False)
+                return Response(response=json_received, status=200, mimetype='application/json')
             except KeyError as e:
                 print(f"Error extracting key from JSON: {str(e)}")
                 return jsonify({"error": f"Missing key in input JSON: {str(e)}"}), 400

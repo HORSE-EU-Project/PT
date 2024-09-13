@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, Response
 import xml.etree.ElementTree as ET
 import requests
 import json
+import time
 
 app = Flask(__name__)
 
@@ -133,7 +134,9 @@ def send_policy():
                 input_value = json_data["if"]["action"]["value"]
                 interface_value = json_data["if"]["element"]["interface"]
                 output_json = create_output_template(input_value, interface_value)
-                return Response(response=json.dumps(output_json), status=200, mimetype='application/json')
+                # return Response(response=json.dumps(output_json), status=200, mimetype='application/json')
+                time.sleep(10)
+                return Response(response=jsonify(json_data).get_data(), status=200, mimetype='application/json')
             except KeyError as e:
                 print(f"Error extracting key from JSON: {str(e)}")
                 return jsonify({"error": f"Missing key in input JSON: {str(e)}"}), 400

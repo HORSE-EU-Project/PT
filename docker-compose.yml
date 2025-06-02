@@ -1,0 +1,9 @@
+services:
+  policy-translator:
+    build: .
+    container_name: policy-translator
+    ports:
+      - "5005:5005"
+    volumes:
+      - .:/app
+    restart: always

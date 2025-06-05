@@ -5,3 +5,6 @@ services:
     ports:
       - "5005:5005"
     restart: always
+    environment:
+      - ORCHESTRATOR_URL=http://10.208.99.74:8002/meservice
+      - METRICS_URL=http://10.208.99.74:11025/query

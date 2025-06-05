@@ -3,6 +3,10 @@ import requests
 from flask import Response
 import xml.etree.ElementTree as ET
 import uuid
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 ORCHESTRATOR_URL = "http://localhost:8002/meservice"
 
@@ -26,7 +30,7 @@ def extract_attack_info(xml_string):
             "flag": flag_elem.text.strip() if flag_elem is not None else None
         }
     except Exception as e:
-        print(f"[ERROR] extracting attack info: {e}")
+        logger.error(f"[ERROR] extracting attack info: {e}")
         return None
 
 def build_attack_xml(info):
@@ -74,13 +78,13 @@ def build_attack_xml(info):
 def send_policy(xml_data):
     response = requests.post(ORCHESTRATOR_URL, data=xml_data,
                              headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
-    print(f"[EM] Sent XML to orchestrator: {response.status_code}")
+    logger.info(f"[EM] Sent XML to orchestrator: {response.status_code}")
     return response
 
 def delete_policy(xml_data):
     response = requests.delete(ORCHESTRATOR_URL, data=xml_data,
                                headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
-    print(f"[EM] Deleted XML policy: {response.status_code}")
+    logger.info(f"[EM] Deleted XML policy: {response.status_code}")
 
 def process_em_xml(xml_data):
     info = extract_attack_info(xml_data)

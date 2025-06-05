@@ -3,12 +3,13 @@ import requests
 from flask import Response
 import xml.etree.ElementTree as ET
 import uuid
+import os
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ORCHESTRATOR_URL = "http://localhost:8002/meservice"
+ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://10.208.99.74:8002/meservice")
 
 def extract_attack_info(xml_string):
     try:

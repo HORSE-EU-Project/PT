@@ -4,6 +4,10 @@ import datetime
 import uuid
 import xml.etree.ElementTree as ET
 from flask import Response
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 ORCHESTRATOR_URL = "http://localhost:8002/meservice"
 METRICS_URL = "http://localhost:11025/query"
@@ -95,11 +99,13 @@ def get_telemetry(pod, interface, metric, duration):
 def send_policy(xml_data):
     response = requests.post(ORCHESTRATOR_URL, data=xml_data,
                              headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
+    logger.info(f"[IBI] Sent XML to orchestrator: {response.status_code}")
     return response
 
 def delete_policy(xml_data):
     requests.delete(ORCHESTRATOR_URL, data=xml_data,
                    headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
+    logger.info(f"[IBI] Deleted XML policy: {response.status_code}")
 
 def process_ibi_json(data):
     xml_data = build_xml_from_json(data)
@@ -118,7 +124,7 @@ def process_ibi_json(data):
     def collect_telemetry():
         kpi = data["what-condition"]["KPIs"]
         val = get_telemetry(kpi["element"]["node"], kpi["element"]["interface"], kpi["metric"], telemetry_duration)
-        print(f"Value after mitigation {val / telemetry_duration}")
+        logger.info(f"Value after mitigation {val / telemetry_duration}")
 
     threading.Timer(telemetry_duration, collect_telemetry).start()
     return Response(response="✔ Policy applied and telemetry collection scheduled", status=200)

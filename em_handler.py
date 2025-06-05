@@ -9,7 +9,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ORCHESTRATOR_URL = os.environ.get("ORCHESTRATOR_URL", "http://10.208.99.74:8002/meservice")
+ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://10.208.99.74:8002/meservice")
 
 def extract_attack_info(xml_string):
     try:

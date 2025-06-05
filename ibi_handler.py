@@ -4,13 +4,14 @@ import datetime
 import uuid
 import xml.etree.ElementTree as ET
 from flask import Response
+import os
 import logging
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ORCHESTRATOR_URL = "http://localhost:8002/meservice"
-METRICS_URL = "http://localhost:11025/query"
+ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://10.208.99.74:8002/meservice")
+METRICS_URL = os.getenv("METRICS_URL", "http://10.208.99.74:11025/query")
 
 def build_xml_from_json(data):
     orchestration_id = f"omspl_{uuid.uuid4().hex}"
@@ -26,9 +27,11 @@ def build_xml_from_json(data):
     capability = ET.SubElement(configuration, "capability")
 
     rule = ET.SubElement(configuration, "configurationRule")
-
+  
     action_type = data.get("if-condition", {}).get("action", {}).get("type", "").lower()
-    if "block" in action_type:
+    if "monitor" in action_type:
+        return "monitor"
+    elif "block" in action_type:
         tipo = "filtering"
     elif "rate" in action_type:
         tipo = "qos"
@@ -103,12 +106,26 @@ def send_policy(xml_data):
     return response
 
 def delete_policy(xml_data):
-    requests.delete(ORCHESTRATOR_URL, data=xml_data,
+    response = requests.delete(ORCHESTRATOR_URL, data=xml_data,
                    headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
     logger.info(f"[IBI] Deleted XML policy: {response.status_code}")
 
+def collect_telemetry(data, telemetry_duration):
+    kpi = data["what-condition"]["KPIs"]
+    metric = kpi.get("metric", "unknown")
+    val = get_telemetry(kpi["element"]["node"], kpi["element"]["interface"], metric, telemetry_duration)
+    logger.info(f"Value after mitigation {val / telemetry_duration} {metric}")
+
 def process_ibi_json(data):
+    policy_duration = int(data.get("if-condition", {}).get("action", {}).get("duration", "60s").replace("s", ""))
+    telemetry_duration = int(data.get("what-condition", {}).get("KPIs", {}).get("duration", "30s").replace("s", ""))
+
     xml_data = build_xml_from_json(data)
+
+    if xml_data == "monitor":
+        threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
+        return Response("✔ Monitor task scheduled", status=200)
+
     if xml_data is None:
         return Response("Unrecognized action type", status=400)
 
@@ -116,15 +133,7 @@ def process_ibi_json(data):
     if response.status_code not in range(200, 300):
         return Response(response="Error sending policy to orchestrator", status=500)
 
-    policy_duration = int(data.get("if-condition", {}).get("action", {}).get("duration", "60s").replace("s", ""))
-    telemetry_duration = int(data.get("what-condition", {}).get("KPIs", {}).get("duration", "30s").replace("s", ""))
-
     threading.Timer(policy_duration, lambda: delete_policy(xml_data)).start()
 
-    def collect_telemetry():
-        kpi = data["what-condition"]["KPIs"]
-        val = get_telemetry(kpi["element"]["node"], kpi["element"]["interface"], kpi["metric"], telemetry_duration)
-        logger.info(f"Value after mitigation {val / telemetry_duration}")
-
-    threading.Timer(telemetry_duration, collect_telemetry).start()
+    threading.Timer(telemetry_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
     return Response(response="✔ Policy applied and telemetry collection scheduled", status=200)

@@ -7,4 +7,9 @@ services:
     restart: always
     environment:
       - ORCHESTRATOR_URL=http://10.208.99.74:8002/meservice
-      - METRICS_URL=http://10.208.99.74:11025/query
+    networks:
+    - kind
+
+networks:
+  kind:
+    external: true

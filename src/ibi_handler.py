@@ -1,17 +1,21 @@
 import threading
 import requests
-import datetime
+from datetime import datetime,timezone
 import uuid
 import xml.etree.ElementTree as ET
-from flask import Response
+from flask import Response, jsonify
 import os
 import logging
+from prometheus_utils import (
+    query_prometheus,
+    is_valid_metric,
+)
+from process_prometheus_json import process_prometheus_json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://10.208.99.74:8002/meservice")
-METRICS_URL = os.getenv("METRICS_URL", "http://10.208.99.74:11025/query")
 
 def build_xml_from_json(data):
     orchestration_id = f"omspl_{uuid.uuid4().hex}"
@@ -78,26 +82,38 @@ def build_xml_from_json(data):
     return ET.tostring(root, encoding="utf-8", method="xml").decode()
 
 def get_telemetry(pod, interface, metric, duration):
-    end_time = datetime.datetime.utcnow()
+    if not is_valid_metric(metric):
+        return jsonify({"error": "Invalid metric"}), 400
+    
+    end_time = datetime.utcnow()
     start_time = end_time - datetime.timedelta(seconds=duration)
+    
+    # Añade la zona horaria UTC y formatea como ISO 8601
+    start_iso = start_time.replace(tzinfo=timezone.utc).isoformat().replace('+00:00', 'Z')
+    end_iso = end_time.replace(tzinfo=timezone.utc).isoformat().replace('+00:00', 'Z')
+    
+    namespace = "horse-complete"  # Namespace por defecto
 
-    payload = {
-        "pod": pod,
-        "interface": interface,
-        "metric": metric,
-        "start": start_time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "end": end_time.strftime("%Y-%m-%dT%H:%M:%S"),
-        "step": f"{duration}s"
-    }
-
-    response = requests.post(METRICS_URL, json=payload)
-    if response.status_code == 200:
-        result = response.json()
-        values = result.get("values", [])
-        if values:
-            last_value = values[-1][1]
-            return float(last_value)
-    return 0.0
+    try:
+        json_data = query_prometheus(metric, pod, interface, namespace, start_iso, end_iso, duration)
+        if json_data:
+            json_processed = process_prometheus_json(json_data)
+            
+            # Suma todos los valores de la métrica
+            total_value = 0
+            if "values" in json_processed:
+                for timestamp_value_pair in json_processed["values"]:
+                    if len(timestamp_value_pair) >= 2:
+                        try:
+                            total_value += float(timestamp_value_pair[1])
+                        except (ValueError, TypeError):
+                            pass
+                        
+            return total_value
+        else:
+            raise ValueError("No data received from Prometheus.")
+    except Exception as e:
+        return jsonify({"error": f"Unexpected error: {str(e)}"}), 500
 
 def send_policy(xml_data):
     response = requests.post(ORCHESTRATOR_URL, data=xml_data,

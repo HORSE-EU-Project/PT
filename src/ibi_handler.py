@@ -83,7 +83,18 @@ def build_xml_from_json(data):
     return ET.tostring(root, encoding="utf-8", method="xml").decode()
 
 def get_telemetry(pod, interface, metric, duration):
-    if not is_valid_metric(metric):
+    # Traduce los nombres de las métricas para la consulta de Prometheus
+    prometheus_metric = metric
+    is_rate = False
+    
+    if metric in ["packets", "packets-per-second"]:
+        prometheus_metric = "container_network_transmit_packets_total"
+        is_rate = "per-second" in metric
+    elif metric in ["bytes", "bytes-per-second"]:
+        prometheus_metric = "container_network_transmit_bytes_total"
+        is_rate = "per-second" in metric
+
+    if not is_valid_metric(prometheus_metric):
         return jsonify({"error": "Invalid metric"}), 400
     
     end_time = datetime.utcnow()
@@ -96,7 +107,7 @@ def get_telemetry(pod, interface, metric, duration):
     namespace = "horse-complete"  # Namespace por defecto
 
     try:
-        json_data = query_prometheus(metric, pod, interface, namespace, start_iso, end_iso, duration)
+        json_data = query_prometheus(prometheus_metric, pod, interface, namespace, start_iso, end_iso, duration)
         if json_data:
             json_processed = process_prometheus_json(json_data)
             
@@ -109,8 +120,8 @@ def get_telemetry(pod, interface, metric, duration):
                             total_value += float(timestamp_value_pair[1])
                         except (ValueError, TypeError):
                             pass
-                        
-            return total_value
+            # Devuelve el valor total y si es una tasa
+            return total_value, is_rate
         else:
             raise ValueError("No data received from Prometheus.")
     except Exception as e:
@@ -130,8 +141,21 @@ def delete_policy(xml_data):
 def collect_telemetry(data, telemetry_duration):
     kpi = data["what-condition"]["KPIs"]
     metric = kpi.get("metric", "unknown")
-    val = get_telemetry(kpi["element"]["node"], kpi["element"]["interface"], metric, telemetry_duration)
-    logger.info(f"Value after mitigation {val / telemetry_duration} {metric}")
+    result = get_telemetry(kpi["element"]["node"], kpi["element"]["interface"], metric, telemetry_duration)
+    
+    # Check if we got an error response
+    if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], Response):
+        logger.error(f"Failed to collect telemetry: {result[0].get_data(as_text=True)}")
+        return
+    
+    val, is_rate = result
+    
+    if is_rate:
+        # Para métricas "per-second", dividimos por la duración
+        logger.info(f"Value after mitigation {val / telemetry_duration} {metric}")
+    else:
+        # Para métricas absolutas, reportamos el valor bruto
+        logger.info(f"Value after mitigation {val} {metric}")
 
 def process_ibi_json(data):
     policy_duration = int(data.get("if-condition", {}).get("action", {}).get("duration", "60s").replace("s", ""))

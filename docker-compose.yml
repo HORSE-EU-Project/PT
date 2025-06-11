@@ -6,7 +6,8 @@ services:
       - "5005:5005"
     restart: always
     environment:
-      - ORCHESTRATOR_URL=http://10.208.99.74:8002/meservice
+      - ORCHESTRATOR_IP=10.208.11.74
+      - PROMETHEUS_PORT=32047
     networks:
     - kind
 

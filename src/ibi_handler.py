@@ -15,7 +15,8 @@ from process_prometheus_json import process_prometheus_json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://10.208.99.74:8002/meservice")
+ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
+ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
 
 def build_xml_from_json(data):
     orchestration_id = f"omspl_{uuid.uuid4().hex}"
@@ -137,6 +138,7 @@ def process_ibi_json(data):
     telemetry_duration = int(data.get("what-condition", {}).get("KPIs", {}).get("duration", "30s").replace("s", ""))
 
     xml_data = build_xml_from_json(data)
+    xml_data2 = build_xml_from_json(data)
 
     if xml_data == "monitor":
         threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
@@ -149,7 +151,7 @@ def process_ibi_json(data):
     if response.status_code not in range(200, 300):
         return Response(response="Error sending policy to orchestrator", status=500)
 
-    threading.Timer(policy_duration, lambda: delete_policy(xml_data)).start()
+    threading.Timer(policy_duration, lambda: delete_policy(xml_data2)).start()
 
-    threading.Timer(telemetry_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
+    threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
     return Response(response="✔ Policy applied and telemetry collection scheduled", status=200)

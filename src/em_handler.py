@@ -9,7 +9,8 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-ORCHESTRATOR_URL = os.getenv("ORCHESTRATOR_URL", "http://10.208.99.74:8002/meservice")
+ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
+ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
 
 def extract_attack_info(xml_string):
     try:
@@ -82,11 +83,6 @@ def send_policy(xml_data):
     logger.info(f"[EM] Sent XML to orchestrator: {response.status_code}")
     return response
 
-def delete_policy(xml_data):
-    response = requests.delete(ORCHESTRATOR_URL, data=xml_data,
-                               headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
-    logger.info(f"[EM] Deleted XML policy: {response.status_code}")
-
 def process_em_xml(xml_data):
     info = extract_attack_info(xml_data)
     if not info:
@@ -97,5 +93,4 @@ def process_em_xml(xml_data):
     if send_response.status_code not in range(200, 300):
         return Response(response="Error sending XML", status=500)
 
-    threading.Timer(info["duration"], lambda: delete_policy(attack_xml)).start()
-    return Response(response="✔ Policy received and scheduled for deletion", status=200)
+    return Response(response="✔ Policy received", status=200)

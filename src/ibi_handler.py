@@ -1,10 +1,11 @@
 import threading
 import requests
-from datetime import datetime,timezone
+from datetime import datetime,timezone,timedelta
 import uuid
 import xml.etree.ElementTree as ET
 from flask import Response, jsonify
 import os
+import json
 import logging
 from prometheus_utils import (
     query_prometheus,
@@ -98,7 +99,7 @@ def get_telemetry(pod, interface, metric, duration):
         return jsonify({"error": "Invalid metric"}), 400
     
     end_time = datetime.utcnow()
-    start_time = end_time - datetime.timedelta(seconds=duration)
+    start_time = end_time - timedelta(seconds=duration)
     
     # Añade la zona horaria UTC y formatea como ISO 8601
     start_iso = start_time.replace(tzinfo=timezone.utc).isoformat().replace('+00:00', 'Z')
@@ -141,7 +142,11 @@ def delete_policy(xml_data):
 def collect_telemetry(data, telemetry_duration):
     kpi = data["what-condition"]["KPIs"]
     metric = kpi.get("metric", "unknown")
-    result = get_telemetry(kpi["element"]["node"], kpi["element"]["interface"], metric, telemetry_duration)
+    node = kpi["element"]["node"]
+    interface = kpi["element"]["interface"]
+    device = f"{node}-{interface}"
+
+    result = get_telemetry(node, interface, metric, telemetry_duration)
     
     # Check if we got an error response
     if isinstance(result, tuple) and len(result) == 2 and isinstance(result[0], Response):
@@ -150,22 +155,27 @@ def collect_telemetry(data, telemetry_duration):
     
     val, is_rate = result
     
-    if is_rate:
-        # Para métricas "per-second", dividimos por la duración
-        logger.info(f"Value after mitigation {val / telemetry_duration} {metric}")
-    else:
-        # Para métricas absolutas, reportamos el valor bruto
-        logger.info(f"Value after mitigation {val} {metric}")
+    res = {
+            "device" : device,
+            "metric" : metric,
+            "value" : val / telemetry_duration if is_rate else val,
+            "duration" : f"{telemetry_duration}s"
+    }
+
+    logger.info(f"Metrics obtained:\n{json.dumps(res, indent=4)}")
 
 def process_ibi_json(data):
     policy_duration = int(data.get("if-condition", {}).get("action", {}).get("duration", "60s").replace("s", ""))
     telemetry_duration = int(data.get("what-condition", {}).get("KPIs", {}).get("duration", "30s").replace("s", ""))
 
+    action = data['if-condition']['action']
+    element = data['if-condition']['element']
     xml_data = build_xml_from_json(data)
     xml_data2 = build_xml_from_json(data)
 
     if xml_data == "monitor":
         threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
+        logger.info(f"Telemetry scheduled in {policy_duration}s with a duration of {telemetry_duration}s")
         return Response("✔ Monitor task scheduled", status=200)
 
     if xml_data is None:
@@ -178,4 +188,6 @@ def process_ibi_json(data):
     threading.Timer(policy_duration, lambda: delete_policy(xml_data2)).start()
 
     threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
+    logger.info(f"Received '{action['type']}' policy in pod {element['node']} with a duration of {action['duration']}")
+    logger.info(f"Policy applied and telemetry scheduled in {policy_duration}s with a duration of {telemetry_duration}s")
     return Response(response="✔ Policy applied and telemetry collection scheduled", status=200)

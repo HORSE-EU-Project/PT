@@ -155,14 +155,34 @@ def collect_telemetry(data, telemetry_duration):
     
     val, is_rate = result
     
-    res = {
-            "device" : device,
-            "metric" : metric,
-            "value" : val / telemetry_duration if is_rate else val,
-            "duration" : f"{telemetry_duration}s"
+    # Calculate the final value
+    final_value = val / telemetry_duration if is_rate else val
+    
+    # Build the response in the new format
+    response_data = {
+        "id": data.get("id", "unknown"),
+        "topology_name": data.get("topology_name", "unknown"),
+        "attack": data.get("attack", "unknown"),
+        "what": {
+            "KPIs": {
+                "element": {
+                    "node": node,
+                    "interface": interface
+                },
+                "metric": metric,
+                "result": {
+                    "value": str(final_value),
+                    "unit": metric
+                }
+            }
+        }
     }
 
-    logger.info(f"Metrics obtained:\n{json.dumps(res, indent=4)}")
+    # Send JSON to impact-analysis endpoint
+    send_telemetry_to_impact_analysis(response_data)
+    
+    # Still log the metrics for debugging purposes
+    logger.info(f"Metrics obtained:\n{json.dumps(response_data, indent=4)}")
 
 def process_ibi_json(data):
     policy_duration = int(data.get("if-condition", {}).get("action", {}).get("duration", "60s").replace("s", ""))
@@ -191,3 +211,16 @@ def process_ibi_json(data):
     logger.info(f"Received '{action['type']}' policy in pod {element['node']} with a duration of {action['duration']}")
     logger.info(f"Policy applied and telemetry scheduled in {policy_duration}s with a duration of {telemetry_duration}s")
     return Response(response="✔ Policy applied and telemetry collection scheduled", status=200)
+
+def send_telemetry_to_impact_analysis(response_data):
+    impact_analysis_url = "http://10.208.11.73:8000/impact-analysis"
+    try:
+        response = requests.post(impact_analysis_url, 
+                               json=response_data,
+                               headers={'Content-Type': 'application/json'})
+        logger.info(f"Sent telemetry data to impact-analysis endpoint: {response.status_code}")
+        logger.info(f"Response: {response.text}")
+        return response.status_code in range(200, 300)
+    except Exception as e:
+        logger.error(f"Failed to send telemetry data to impact-analysis endpoint: {str(e)}")
+        return False

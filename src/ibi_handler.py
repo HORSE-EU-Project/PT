@@ -12,9 +12,11 @@ from prometheus_utils import (
     is_valid_metric,
 )
 from process_prometheus_json import process_prometheus_json
+from policy_file_cache import PolicyFileCache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+policy_cache = PolicyFileCache()
 
 ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
 ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
@@ -191,12 +193,20 @@ def process_ibi_json(data):
     action = data['if-condition']['action']
     element = data['if-condition']['element']
     xml_data = build_xml_from_json(data)
-    xml_data2 = build_xml_from_json(data)
 
     if xml_data == "monitor":
+        attack_id = data.get('attack')
+        if attack_id:
+            em_policy_xml = policy_cache.get_and_clear_policy(attack_id)
+            if em_policy_xml:
+                em_response = send_policy(em_policy_xml)
+                logger.info(f"EM policy sent for {attack_id}: {em_response.status_code}")
+            else:
+                logger.warning(f"No EM policy found for {attack_id}")
+
         threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
         logger.info(f"Telemetry scheduled in {policy_duration}s with a duration of {telemetry_duration}s")
-        return Response("✔ Monitor task scheduled", status=200)
+        return Response("✔ EM policy sent and Monitor task scheduled", status=200)
 
     if xml_data is None:
         return Response("Unrecognized action type", status=400)
@@ -205,7 +215,7 @@ def process_ibi_json(data):
     if response.status_code not in range(200, 300):
         return Response(response="Error sending policy to orchestrator", status=500)
 
-    threading.Timer(policy_duration, lambda: delete_policy(xml_data2)).start()
+    threading.Timer(policy_duration, lambda: delete_policy(xml_data)).start()
 
     threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
     logger.info(f"Received '{action['type']}' policy in pod {element['node']} with a duration of {action['duration']}")

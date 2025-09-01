@@ -5,9 +5,11 @@ import xml.etree.ElementTree as ET
 import uuid
 import os
 import logging
+from policy_file_cache import PolicyFileCache
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+policy_cache = PolicyFileCache()
 
 ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
 ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
@@ -88,9 +90,13 @@ def process_em_xml(xml_data):
     if not info:
         return Response(response="Invalid EM XML format", status=400)
 
+    # Traducimos la información del ataque a XML
     attack_xml = build_attack_xml(info)
-    send_response = send_policy(attack_xml)
-    if send_response.status_code not in range(200, 300):
-        return Response(response="Error sending XML", status=500)
 
-    return Response(response="✔ Policy received", status=200)
+    attack_type = info["attack"]  # ej: "DDoS Downlink"
+    success = policy_cache.store_policy(attack_type, attack_xml)
+    
+    if success:
+        return Response(response="✔ Policy stored", status=200)
+    else:
+        return Response(response="Error storing policy", status=500)

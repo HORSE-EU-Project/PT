@@ -22,17 +22,31 @@ def extract_attack_info(xml_string):
         attacker = root.find('.//ThreatActor/Source')
         victim = root.find('.//AttackLocation')
         duration_elem = root.find('.//Parameter/Duration')
-        protocol_elem = root.find('.//Parameter/Protocol')
-        flag_elem = root.find('.//Parameter/Flag')
 
-        return {
+        attack_info = {
             "attack": attack.text.strip() if attack is not None else "Unknown",
             "attacker": attacker.text.strip() if attacker is not None else "internet",
             "victim": victim.text.strip() if victim is not None else "dns-c1",
             "duration": int(duration_elem.text.strip()) if duration_elem is not None else 30,
-            "protocol": protocol_elem.text.strip() if protocol_elem is not None else None,
-            "flag": flag_elem.text.strip() if flag_elem is not None else None
         }
+
+        attack_text = attack.text.strip()
+
+        if attack_text == 'DDoS Downlink':
+            protocol_elem = root.find('.//Parameter/Protocol')
+            flag_elem = root.find('.//Parameter/Flag')
+            attack_info["protocol"] = protocol_elem.text.strip() if protocol_elem is not None else "TCP"
+            attack_info["flag"] = flag_elem.text.strip() if flag_elem is not None else "SYN"
+        elif attack_text == 'DNS Amplification':
+            port_elem = root.find('.//Parameter/Port')
+            protocol_elem = root.find('.//Parameter/Protocol')
+            domain_elem = root.find('.//Parameter/DomainName')
+            attack_info["protocol"] = protocol_elem.text.strip() if protocol_elem is not None else "UDP"
+            attack_info["port"] = port_elem.text.strip() if port_elem is not None else "53"
+            attack_info["domain_name"] = domain_elem.text.strip() if domain_elem is not None else "dominio1.org"
+
+        return attack_info
+    
     except Exception as e:
         logger.error(f"[ERROR] extracting attack info: {e}")
         return None
@@ -58,10 +72,14 @@ def build_attack_xml(info):
     ET.SubElement(action, "attack").text = info["attack"]
 
     attackParams = ET.SubElement(action, "attackParams")
-    if info["protocol"]:
+    if 'protocol' in info:
         ET.SubElement(attackParams, "protocol").text = info["protocol"]
-    if info["flag"]:
+    if 'flag' in info:
         ET.SubElement(attackParams, "flag").text = info["flag"]
+    if 'port' in info:
+        ET.SubElement(attackParams, "port").text = info["port"]
+    if 'domain_name' in info:
+        ET.SubElement(attackParams, "domain_name").text = info["domain_name"]
 
     ET.SubElement(action, "description").text = "Hola, vamos a filtrar"
     ET.SubElement(action, "duration").text = f"{info['duration']}s"

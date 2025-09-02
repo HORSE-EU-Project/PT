@@ -7,6 +7,9 @@ from flask import Response, jsonify
 import os
 import json
 import logging
+from colorama import init, Fore, Style
+import xml.etree.ElementTree as ET
+import xml.dom.minidom
 from prometheus_utils import (
     query_prometheus,
     is_valid_metric,
@@ -17,6 +20,9 @@ from policy_file_cache import PolicyFileCache
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 policy_cache = PolicyFileCache()
+
+# Colorama
+init()
 
 ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
 ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
@@ -184,7 +190,7 @@ def collect_telemetry(data, telemetry_duration):
     send_telemetry_to_impact_analysis(response_data)
     
     # Still log the metrics for debugging purposes
-    logger.info(f"Metrics obtained:\n{json.dumps(response_data, indent=4)}")
+    logger.info(f"{Fore.YELLOW}Metrics obtained ({metric}):{Style.RESET_ALL}\n{json.dumps(response_data, indent=4)}")
 
 def process_ibi_json(data):
     policy_duration = int(data.get("if-condition", {}).get("action", {}).get("duration", "60s").replace("s", ""))
@@ -193,6 +199,8 @@ def process_ibi_json(data):
     action = data['if-condition']['action']
     element = data['if-condition']['element']
     xml_data = build_xml_from_json(data)
+
+    logger.info(f"{Fore.YELLOW}IBI Mitigation Action ({action['type']}):{Style.RESET_ALL}\n{json.dumps(data, indent=4)}")
 
     if xml_data == "monitor":
         attack_id = data.get('attack')
@@ -215,7 +223,21 @@ def process_ibi_json(data):
     if response.status_code not in range(200, 300):
         return Response(response="Error sending policy to orchestrator", status=500)
 
+    # Format XML for better readability
+    try:
+        dom = xml.dom.minidom.parseString(xml_data)
+        pretty_xml = dom.toprettyxml(indent="  ")
+        # Remove extra blank lines
+        pretty_xml = '\n'.join([line for line in pretty_xml.split('\n') if line.strip()])
+        logger.info(f"{Fore.YELLOW}MSPL Translation (FROM IBI - {action['type']}):{Style.RESET_ALL}\n{pretty_xml}")
+    except Exception as e:
+        # Fallback to raw XML if formatting fails
+        logger.info(f"{Fore.YELLOW}MSPL Translation (FROM IBI - {action['type']}):{Style.RESET_ALL}\n{xml_data}")
+        logger.warning(f"Failed to format XML: {e}")
+
     threading.Timer(policy_duration, lambda: delete_policy(xml_data)).start()
+
+    telemetry_duration = 10 # debug
 
     threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
     logger.info(f"Received '{action['type']}' policy in pod {element['node']} with a duration of {action['duration']}")
@@ -234,3 +256,4 @@ def send_telemetry_to_impact_analysis(response_data):
     except Exception as e:
         logger.error(f"Failed to send telemetry data to impact-analysis endpoint: {str(e)}")
         return False
+    

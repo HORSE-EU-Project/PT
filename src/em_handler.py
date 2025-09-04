@@ -32,12 +32,12 @@ def extract_attack_info(xml_string):
 
         attack_text = attack.text.strip()
 
-        if attack_text == 'DDoS Downlink':
+        if attack_text == 'DDoS_Downlink':
             protocol_elem = root.find('.//Parameter/Protocol')
             flag_elem = root.find('.//Parameter/Flag')
             attack_info["protocol"] = protocol_elem.text.strip() if protocol_elem is not None else "TCP"
             attack_info["flag"] = flag_elem.text.strip() if flag_elem is not None else "SYN"
-        elif attack_text == 'DNS Amplification':
+        elif attack_text == 'DNS_Amplification':
             port_elem = root.find('.//Parameter/Port')
             protocol_elem = root.find('.//Parameter/Protocol')
             domain_elem = root.find('.//Parameter/DomainName')
@@ -92,11 +92,13 @@ def build_attack_xml(info):
     ET.SubElement(configuration, "Name").text = "Conf_0010"
 
     ET.SubElement(itresource, "priority").text = "1000"
+    
     enablers = ET.SubElement(itresource, "enablerCandidates")
     ET.SubElement(enablers, "enabler").text = "kne_pod"
 
     return ET.tostring(root, encoding="utf-8", method="xml").decode()
 
+# (Not used anymore)
 def send_policy(xml_data):
     response = requests.post(ORCHESTRATOR_URL, data=xml_data,
                              headers={'Content-Type': 'application/xml', 'Cache-Control': 'no-cache'})
@@ -108,10 +110,9 @@ def process_em_xml(xml_data):
     if not info:
         return Response(response="Invalid EM XML format", status=400)
 
-    # Traducimos la información del ataque a XML
     attack_xml = build_attack_xml(info)
 
-    attack_type = info["attack"]  # ej: "DDoS Downlink"
+    attack_type = info["attack"]  # ej: "DDoS_Downlink"
     success = policy_cache.store_policy(attack_type, attack_xml)
     
     if success:

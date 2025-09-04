@@ -26,6 +26,7 @@ init()
 
 ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
 ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
+IMPACT_ANALYSIS_URL = "http://10.208.11.73:8001/impact-analysis"
 
 def build_xml_from_json(data):
     orchestration_id = f"omspl_{uuid.uuid4().hex}"
@@ -46,13 +47,13 @@ def build_xml_from_json(data):
     if "monitor" in action_type:
         return "monitor"
     elif "block" in action_type:
-        tipo = "filtering"
+        type = "filtering"
     elif "rate" in action_type:
-        tipo = "qos"
+        type = "qos"
     else:
         return None
 
-    if tipo == "filtering":
+    if type == "filtering":
         ET.SubElement(capability, "Name").text = "Filtering_L3"
         action = ET.SubElement(rule, "configurationRuleAction", {"xsi:type": "HorseFilteringAction"})
         ET.SubElement(action, "filteringActionType").text = "DROP"
@@ -68,7 +69,7 @@ def build_xml_from_json(data):
         ET.SubElement(rule, "Name").text = f"Filtering_Rule_{data['id']}"
         ET.SubElement(configuration, "Name").text = f"Conf_{data['id']}"
 
-    elif tipo == "qos":
+    elif type == "qos":
         ET.SubElement(capability, "Name").text = "QoS"
         action = ET.SubElement(rule, "configurationRuleAction", {"xsi:type": "HorseQoSAction"})
         ET.SubElement(action, "qosActionType").text = "RATE"
@@ -166,7 +167,7 @@ def collect_telemetry(data, telemetry_duration):
     # Calculate the final value
     final_value = val / telemetry_duration if is_rate else val
     
-    # Build the response in the new format
+    # Build the response data
     response_data = {
         "id": data.get("id", "unknown"),
         "topology_name": data.get("topology_name", "unknown"),
@@ -186,19 +187,32 @@ def collect_telemetry(data, telemetry_duration):
         }
     }
 
-    # Send JSON to impact-analysis endpoint
-    send_telemetry_to_impact_analysis(response_data)
-    
-    # Still log the metrics for debugging purposes
+    # Log the metrics for debugging purposes
     logger.info(f"{Fore.YELLOW}Metrics obtained ({metric}):{Style.RESET_ALL}\n{json.dumps(response_data, indent=4)}")
 
+    # Send JSON with metric results to ibi endpoint
+    send_telemetry_to_ibi(response_data)
+
+def send_telemetry_to_ibi(response_data):
+    try:
+        response = requests.post(IMPACT_ANALYSIS_URL, 
+                               json=response_data,
+                               headers={'Content-Type': 'application/json'})
+        logger.info(f"Sent telemetry data to impact-analysis endpoint: {response.status_code}")
+        logger.info(f"Response: {response.text}")
+        return response.status_code in range(200, 300)
+    except Exception as e:
+        logger.error(f"Failed to send telemetry data to impact-analysis endpoint: {str(e)}")
+        return False
+    
 def process_ibi_json(data):
     policy_duration = int(data.get("if-condition", {}).get("action", {}).get("duration", "60s").replace("s", ""))
     telemetry_duration = int(data.get("what-condition", {}).get("KPIs", {}).get("duration", "30s").replace("s", ""))
 
     action = data['if-condition']['action']
     element = data['if-condition']['element']
-    xml_data = build_xml_from_json(data)
+    xml_data = build_xml_from_json(data) # For sending to orchestrator
+    xml_data2 = build_xml_from_json(data) # For deletion after use (to avoid mspl conflicts)
 
     logger.info(f"{Fore.YELLOW}IBI Mitigation Action ({action['type']}):{Style.RESET_ALL}\n{json.dumps(data, indent=4)}")
 
@@ -211,7 +225,7 @@ def process_ibi_json(data):
                 logger.info(f"EM policy sent for {attack_id}: {em_response.status_code}")
             else:
                 logger.warning(f"No EM policy found for {attack_id}")
-
+                
         threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
         logger.info(f"Telemetry scheduled in {policy_duration}s with a duration of {telemetry_duration}s")
         return Response("✔ EM policy sent and Monitor task scheduled", status=200)
@@ -235,25 +249,9 @@ def process_ibi_json(data):
         logger.info(f"{Fore.YELLOW}MSPL Translation (FROM IBI - {action['type']}):{Style.RESET_ALL}\n{xml_data}")
         logger.warning(f"Failed to format XML: {e}")
 
-    threading.Timer(policy_duration, lambda: delete_policy(xml_data)).start()
-
-    telemetry_duration = 10 # debug
+    threading.Timer(policy_duration, lambda: delete_policy(xml_data2)).start()
 
     threading.Timer(policy_duration, lambda: collect_telemetry(data, telemetry_duration)).start()
     logger.info(f"Received '{action['type']}' policy in pod {element['node']} with a duration of {action['duration']}")
     logger.info(f"Policy applied and telemetry scheduled in {policy_duration}s with a duration of {telemetry_duration}s")
     return Response(response="✔ Policy applied and telemetry collection scheduled", status=200)
-
-def send_telemetry_to_impact_analysis(response_data):
-    impact_analysis_url = "http://10.208.11.73:8000/impact-analysis"
-    try:
-        response = requests.post(impact_analysis_url, 
-                               json=response_data,
-                               headers={'Content-Type': 'application/json'})
-        logger.info(f"Sent telemetry data to impact-analysis endpoint: {response.status_code}")
-        logger.info(f"Response: {response.text}")
-        return response.status_code in range(200, 300)
-    except Exception as e:
-        logger.error(f"Failed to send telemetry data to impact-analysis endpoint: {str(e)}")
-        return False
-    

@@ -8,7 +8,7 @@ class PolicyFileCache:
         
     def store_policy(self, attack_type, translated_xml):
         """
-        Guarda la política traducida (XML) en un archivo
+        Saves the translated policy (XML) to a file
         """
         filename = f"policy_{attack_type}.xml"
         filepath = self.cache_dir / filename
@@ -16,15 +16,15 @@ class PolicyFileCache:
         try:
             with open(filepath, 'w') as f:
                 f.write(translated_xml)
-            print(f"💾 Política guardada en: {filepath}")
+            print(f"Policy saved in: {filepath}")
             return True
         except Exception as e:
-            print(f"❌ Error guardando política: {e}")
+            print(f"❌ Error saving policy: {e}")
             return False
     
     def get_and_clear_policy(self, attack_type):
         """
-        Lee la política traducida y elimina el archivo
+        Reads the translated policy and deletes the file
         """
         filename = f"policy_{attack_type}.xml"
         filepath = self.cache_dir / filename
@@ -34,9 +34,9 @@ class PolicyFileCache:
                 with open(filepath, 'r') as f:
                     translated_xml = f.read()
                 os.remove(filepath)
-                print(f"📖 Política leída y archivo eliminado: {filepath}")
+                print(f"Read policy and removed file: {filepath}")
                 return translated_xml
             except Exception as e:
-                print(f"❌ Error leyendo política: {e}")
-        
+                print(f"❌ Error reading policy: {e}")
+                return None
         return None

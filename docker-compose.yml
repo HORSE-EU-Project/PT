@@ -7,7 +7,8 @@ services:
     restart: always
     environment:
       - ORCHESTRATOR_IP=10.208.11.74
-      - PROMETHEUS_PORT=32047
+      - PROMETHEUS_ADDR=172.18.0.2:32047
+      - IBI_ADDR=10.208.11.73:8001
     networks:
     - kind
 

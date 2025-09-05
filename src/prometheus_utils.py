@@ -11,8 +11,9 @@ VALID_METRICS = {
     'container_network_transmit_bytes_total'
 }
 
-PROMETHEUS_PORT = os.getenv("PROMETHEUS_PORT", "32047")
-PROMETHEUS_URL = f"http://172.18.0.2:{PROMETHEUS_PORT}"
+
+PROMETHEUS_ADDR = os.getenv("PROMETHEUS_ADDR", "172.18.0.2:32047")
+PROMETHEUS_URL = f"http://{PROMETHEUS_ADDR}"
 
 def query_prometheus(metric, pod, interface, namespace, start, end, step):
     url = f"{PROMETHEUS_URL}/api/v1/query_range"

@@ -71,15 +71,16 @@ def build_attack_xml(info):
     ET.SubElement(action, "id").text = "0007"
     ET.SubElement(action, "attack").text = info["attack"]
 
+    # IMPORTANT: Order of the parameters matters. It must follow the order in the XSD, if not, it won't work.
     attackParams = ET.SubElement(action, "attackParams")
     if 'protocol' in info:
         ET.SubElement(attackParams, "protocol").text = info["protocol"]
     if 'flag' in info:
         ET.SubElement(attackParams, "flag").text = info["flag"]
-    if 'port' in info:
-        ET.SubElement(attackParams, "port").text = info["port"]
     if 'domain_name' in info:
         ET.SubElement(attackParams, "domain_name").text = info["domain_name"]
+    if 'port' in info:
+        ET.SubElement(attackParams, "port").text = info["port"]
 
     ET.SubElement(action, "description").text = "Hola, vamos a filtrar"
     ET.SubElement(action, "duration").text = f"{info['duration']}s"
@@ -92,7 +93,7 @@ def build_attack_xml(info):
     ET.SubElement(configuration, "Name").text = "Conf_0010"
 
     ET.SubElement(itresource, "priority").text = "1000"
-    
+
     enablers = ET.SubElement(itresource, "enablerCandidates")
     ET.SubElement(enablers, "enabler").text = "kne_pod"
 

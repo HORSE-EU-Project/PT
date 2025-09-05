@@ -26,7 +26,8 @@ init()
 
 ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
 ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
-IMPACT_ANALYSIS_URL = "http://10.208.11.73:8001/impact-analysis"
+IBI_ADDR = os.getenv("IBI_ADDR", "10.208.11.73:8001")
+IMPACT_ANALYSIS_URL = f"http://{IBI_ADDR}/impact-analysis"
 
 def build_xml_from_json(data):
     orchestration_id = f"omspl_{uuid.uuid4().hex}"

@@ -59,7 +59,7 @@ def build_xml_from_json(data):
         action = ET.SubElement(rule, "configurationRuleAction", {"xsi:type": "HorseFilteringAction"})
         ET.SubElement(action, "filteringActionType").text = "DROP"
         ET.SubElement(action, "id").text = data["id"]
-        ET.SubElement(action, "description").text = "Hola, vamos a filtrar"
+        ET.SubElement(action, "description").text = "MA#2 - Filtering pod IP in router"
 
         condition = ET.SubElement(rule, "configurationCondition", {"xsi:type": "HorseFilteringCondition"})
         ET.SubElement(condition, "target").text = data["if-condition"]["action"]["value"]
@@ -83,7 +83,7 @@ def build_xml_from_json(data):
         action = ET.SubElement(rule, "configurationRuleAction", {"xsi:type": "HorseQoSAction"})
         ET.SubElement(action, "qosActionType").text = "RATE"
         ET.SubElement(action, "id").text = data["id"]
-        ET.SubElement(action, "description").text = "Hola, vamos a hacer QoS"
+        ET.SubElement(action, "description").text = "MA#1 - Lowering bandwidth in router (QoS)"
 
         condition = ET.SubElement(rule, "configurationCondition", {"xsi:type": "HorseQoSCondition"})
         ET.SubElement(condition, "device").text = data["if-condition"]["element"]["node"]

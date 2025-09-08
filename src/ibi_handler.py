@@ -63,8 +63,16 @@ def build_xml_from_json(data):
 
         condition = ET.SubElement(rule, "configurationCondition", {"xsi:type": "HorseFilteringCondition"})
         ET.SubElement(condition, "target").text = data["if-condition"]["action"]["value"]
-        ET.SubElement(condition, "input_interface").text = "*"
-        ET.SubElement(condition, "output_interface").text = data["if-condition"]["element"]["interface"]
+        
+        attack = data.get("attack", "").lower()
+        
+        if "downlink" in attack:
+            ET.SubElement(condition, "input_interface").text = "*"
+            ET.SubElement(condition, "output_interface").text = data["if-condition"]["element"]["interface"]
+        else:
+            ET.SubElement(condition, "input_interface").text = data["if-condition"]["element"]["interface"]
+            ET.SubElement(condition, "output_interface").text = "*"
+            
         ET.SubElement(condition, "device").text = data["if-condition"]["element"]["node"]
 
         ET.SubElement(rule, "Name").text = f"Filtering_Rule_{data['id']}"

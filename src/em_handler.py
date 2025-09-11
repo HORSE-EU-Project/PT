@@ -81,8 +81,12 @@ def build_attack_xml(info):
         ET.SubElement(attackParams, "domain_name").text = info["domain_name"]
     if 'port' in info:
         ET.SubElement(attackParams, "port").text = info["port"]
-
-    ET.SubElement(action, "description").text = "Attack simulation from Early Modeling"
+        
+    if 'description' in info:
+        ET.SubElement(action, "description").text = info["description"]
+    else:
+        ET.SubElement(action, "description").text = "Attack simulation from Early Modeling"
+        
     ET.SubElement(action, "duration").text = f"{info['duration']}s"
 
     condition = ET.SubElement(rule, "configurationCondition", {"xsi:type": "HorseAttackCondition"})

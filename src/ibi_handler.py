@@ -211,7 +211,7 @@ def send_telemetry_to_ibi(response_data):
         logger.info(f"Response: {response.text}")
         return response.status_code in range(200, 300)
     except Exception as e:
-        logger.error(f"Failed to send telemetry data to impact-analysis endpoint: {str(e)}")
+        #logger.error(f"Failed to send telemetry data to impact-analysis endpoint: {str(e)}")
         return False
     
 def process_ibi_json(data):

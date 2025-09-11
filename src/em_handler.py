@@ -32,11 +32,14 @@ def extract_attack_info(xml_string):
 
         attack_text = attack.text.strip()
 
+        description_elem = root.find('.//Parameter/Description')
+
         if attack_text == 'DDoS_Downlink':
             protocol_elem = root.find('.//Parameter/Protocol')
             flag_elem = root.find('.//Parameter/Flag')
             attack_info["protocol"] = protocol_elem.text.strip() if protocol_elem is not None else "TCP"
             attack_info["flag"] = flag_elem.text.strip() if flag_elem is not None else "SYN"
+            
         elif attack_text == 'DNS_Amplification':
             port_elem = root.find('.//Parameter/Port')
             protocol_elem = root.find('.//Parameter/Protocol')
@@ -44,6 +47,8 @@ def extract_attack_info(xml_string):
             attack_info["protocol"] = protocol_elem.text.strip() if protocol_elem is not None else "UDP"
             attack_info["port"] = port_elem.text.strip() if port_elem is not None else "53"
             attack_info["domain_name"] = domain_elem.text.strip() if domain_elem is not None else "dominio1.org"
+
+        attack_info["description"] = description_elem.text.strip() if description_elem is not None else "Attack simulation from Early Modeling"
 
         return attack_info
     
@@ -81,11 +86,8 @@ def build_attack_xml(info):
         ET.SubElement(attackParams, "domain_name").text = info["domain_name"]
     if 'port' in info:
         ET.SubElement(attackParams, "port").text = info["port"]
-        
     if 'description' in info:
         ET.SubElement(action, "description").text = info["description"]
-    else:
-        ET.SubElement(action, "description").text = "Attack simulation from Early Modeling"
         
     ET.SubElement(action, "duration").text = f"{info['duration']}s"
 

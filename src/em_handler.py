@@ -13,6 +13,7 @@ policy_cache = PolicyFileCache()
 
 ORCHESTRATOR_IP = os.getenv("ORCHESTRATOR_IP", "10.208.11.74")
 ORCHESTRATOR_URL = f"http://{ORCHESTRATOR_IP}:8002/meservice"
+AVAILABLE_ATTACKS = ["ddos_downlink", "dns_amplification"]
 
 def extract_attack_info(xml_string):
     try:
@@ -22,25 +23,28 @@ def extract_attack_info(xml_string):
         attacker = root.find('.//ThreatActor/Source')
         victim = root.find('.//AttackLocation')
         duration_elem = root.find('.//Parameter/Duration')
-
+        description_elem = root.find('.//Parameter/Description')
+        
+        attack_text = attack.text.strip().lower() if attack is not None else "unknown"
+        
         attack_info = {
-            "attack": attack.text.strip() if attack is not None else "Unknown",
+            "attack": attack_text,
             "attacker": attacker.text.strip() if attacker is not None else "internet",
             "victim": victim.text.strip() if victim is not None else "dns-c1",
             "duration": int(duration_elem.text.strip()) if duration_elem is not None else 30,
         }
+        
+        if attack_text not in AVAILABLE_ATTACKS:
+            logger.error(f"[ERROR] Attack type '{attack_text}' not supported.")
+            return None
 
-        attack_text = attack.text.strip()
-
-        description_elem = root.find('.//Parameter/Description')
-
-        if attack_text == 'DDoS_Downlink':
+        if attack_text == 'ddos_downlink':
             protocol_elem = root.find('.//Parameter/Protocol')
             flag_elem = root.find('.//Parameter/Flag')
             attack_info["protocol"] = protocol_elem.text.strip() if protocol_elem is not None else "TCP"
             attack_info["flag"] = flag_elem.text.strip() if flag_elem is not None else "SYN"
             
-        elif attack_text == 'DNS_Amplification':
+        elif attack_text == 'dns_amplification':
             port_elem = root.find('.//Parameter/Port')
             protocol_elem = root.find('.//Parameter/Protocol')
             domain_elem = root.find('.//Parameter/DomainName')
@@ -100,6 +104,7 @@ def build_attack_xml(info):
 
     ET.SubElement(itresource, "priority").text = "1000"
 
+    ## why enablers always kne_pod?
     enablers = ET.SubElement(itresource, "enablerCandidates")
     ET.SubElement(enablers, "enabler").text = "kne_pod"
 
@@ -119,7 +124,7 @@ def process_em_xml(xml_data):
 
     attack_xml = build_attack_xml(info)
 
-    attack_type = info["attack"]  # ej: "DDoS_Downlink"
+    attack_type = info["attack"]  # ej: "ddos_downlink" (always lowercase)
     success = policy_cache.store_policy(attack_type, attack_xml)
     
     if success:

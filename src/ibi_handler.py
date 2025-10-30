@@ -226,7 +226,7 @@ def process_ibi_json(data):
     logger.info(f"{Fore.YELLOW}IBI Mitigation Action ({action['type']}):{Style.RESET_ALL}\n{json.dumps(data, indent=4)}")
 
     if xml_data == "monitor":
-        attack_id = data.get('attack')
+        attack_id = data.get('attack').strip().lower()
         if attack_id:
             em_policy_xml = policy_cache.get_and_clear_policy(attack_id)
             if em_policy_xml:

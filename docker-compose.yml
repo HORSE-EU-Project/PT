@@ -8,7 +8,7 @@ services:
     environment:
       - ORCHESTRATOR_IP=10.208.11.74
       - PROMETHEUS_ADDR=172.18.0.2:32047
-      - IBI_ADDR=10.208.11.73:8001
+      - IBI_ADDR=10.208.11.73:8003
     networks:
     - kind
 
